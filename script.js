@@ -24,6 +24,17 @@ const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 let drawing = false;
 let currentPosition = { x: 0, y: 0 };
+let brushSize = document.getElementById('brushSize').value;
+let brushColor = document.getElementById('brushColor').value;
+
+// Update brush size and color based on user input
+document.getElementById('brushSize').addEventListener('input', (e) => {
+    brushSize = e.target.value;
+});
+
+document.getElementById('brushColor').addEventListener('input', (e) => {
+    brushColor = e.target.value;
+});
 
 // Start drawing
 canvas.addEventListener('mousedown', (e) => {
@@ -34,12 +45,12 @@ canvas.addEventListener('mousedown', (e) => {
 // Draw on canvas
 canvas.addEventListener('mousemove', (e) => {
   if (!drawing) return;
-  
+
   const newPosition = { x: e.offsetX, y: e.offsetY };
-  drawLine(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y);
+  drawLine(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y, brushSize, brushColor);
 
   // Save each drawing action to Firebase
-  saveDrawingData(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y);
+  saveDrawingData(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y, brushSize, brushColor);
   
   currentPosition = newPosition;
 });
@@ -56,26 +67,26 @@ document.getElementById('clear').addEventListener('click', () => {
 });
 
 // Draw a line on the canvas
-function drawLine(x1, y1, x2, y2) {
+function drawLine(x1, y1, x2, y2, size, color) {
   ctx.beginPath();
   ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
+  ctx.lineTo(x2, x2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
   ctx.stroke();
   ctx.closePath();
 }
 
-// Save each drawing stroke to Firebase as a new child in the "drawing" collection
-function saveDrawingData(x1, y1, x2, y2) {
+// Save each drawing stroke to Firebase with brush size and color
+function saveDrawingData(x1, y1, x2, y2, size, color) {
   const drawingRef = ref(database, 'drawing');
   const newDrawingRef = push(drawingRef);  // Create a new unique reference for each stroke
-  set(newDrawingRef, { x1, y1, x2, y2 });
+  set(newDrawingRef, { x1, y1, x2, y2, size, color });
 }
 
 // Retrieve and draw from Firebase in real-time
 const drawingRef = ref(database, 'drawing');
 onChildAdded(drawingRef, (snapshot) => {
   const data = snapshot.val();
-  drawLine(data.x1, data.y1, data.x2, data.y2);
+  drawLine(data.x1, data.y1, data.x2, data.y2, data.size, data.color);
 });

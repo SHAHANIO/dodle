@@ -1,6 +1,6 @@
 // Import Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, remove } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-analytics.js";
 
 // Your Firebase configuration
@@ -38,7 +38,7 @@ canvas.addEventListener('mousemove', (e) => {
   const newPosition = { x: e.offsetX, y: e.offsetY };
   drawLine(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y);
 
-  // Save drawing data to Firebase
+  // Save each drawing action to Firebase
   saveDrawingData(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y);
   
   currentPosition = newPosition;
@@ -49,10 +49,10 @@ canvas.addEventListener('mouseup', () => {
   drawing = false;
 });
 
-// Clear canvas
+// Clear canvas and Firebase data
 document.getElementById('clear').addEventListener('click', () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  set(ref(database, 'drawing'), null); // Clears the Firebase data
+  remove(ref(database, 'drawing')); // Clears the Firebase data
 });
 
 // Draw a line on the canvas
@@ -66,18 +66,16 @@ function drawLine(x1, y1, x2, y2) {
   ctx.closePath();
 }
 
-// Save drawing data to Firebase
+// Save each drawing stroke to Firebase as a new child in the "drawing" collection
 function saveDrawingData(x1, y1, x2, y2) {
   const drawingRef = ref(database, 'drawing');
-  const drawingData = { x1, y1, x2, y2 };
-  set(drawingRef, drawingData);
+  const newDrawingRef = push(drawingRef);  // Create a new unique reference for each stroke
+  set(newDrawingRef, { x1, y1, x2, y2 });
 }
 
 // Retrieve and draw from Firebase in real-time
 const drawingRef = ref(database, 'drawing');
-onValue(drawingRef, (snapshot) => {
+onChildAdded(drawingRef, (snapshot) => {
   const data = snapshot.val();
-  if (data) {
-    drawLine(data.x1, data.y1, data.x2, data.y2);
-  }
+  drawLine(data.x1, data.y1, data.x2, data.y2);
 });

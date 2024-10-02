@@ -1,11 +1,9 @@
-// Import the functions you need from the SDKs you need
+// Import Firebase modules
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-analytics.js";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Your Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBv_IH3o2ok2w_hzIT2OW90xxbEK7quLE0",
   authDomain: "dodleshahan.firebaseapp.com",
@@ -19,76 +17,67 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+const database = getDatabase(app);
 
 // Canvas setup
 const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 let drawing = false;
+let currentPosition = { x: 0, y: 0 };
 
-// Function to start drawing
-function startDrawing(e) {
-    drawing = true;
-    draw(e);
-}
-
-// Function to end drawing
-function endDrawing() {
-    drawing = false;
-    ctx.beginPath();  // Stops the current path
-}
-
-// Function to draw on canvas
-function draw(e) {
-    if (!drawing) return;
-
-    const x = e.clientX - canvas.offsetLeft;
-    const y = e.clientY - canvas.offsetTop;
-
-    ctx.lineWidth = 5;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#000000";
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    // Send the drawing coordinates to Firebase
-    const drawData = { x, y };
-    const drawRef = ref(database, 'drawings');
-    set(drawRef.push(), drawData);  // Push the new point to the database
-}
-
-// Function to render the drawing from Firebase data
-function renderDrawing(snapshot) {
-    const data = snapshot.val();
-    if (!data) return;
-    
-    // Draw each point from the database
-    ctx.lineTo(data.x, data.y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(data.x, data.y);
-}
-
-// Event listeners for drawing on canvas
-canvas.addEventListener('mousedown', startDrawing);
-canvas.addEventListener('mouseup', endDrawing);
-canvas.addEventListener('mousemove', draw);
-
-// Firebase listener for real-time drawing sync
-const drawRef = ref(database, 'drawings');
-onValue(drawRef, (snapshot) => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas
-    snapshot.forEach(childSnapshot => {
-        renderDrawing(childSnapshot);  // Draw based on data from Firebase
-    });
+// Start drawing
+canvas.addEventListener('mousedown', (e) => {
+  drawing = true;
+  currentPosition = { x: e.offsetX, y: e.offsetY };
 });
 
-// Clear canvas and remove data from Firebase
-const clearButton = document.getElementById('clear');
-clearButton.addEventListener('click', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const drawRef = ref(database, 'drawings');
-    remove(drawRef);  // Clear the drawings from the database
+// Draw on canvas
+canvas.addEventListener('mousemove', (e) => {
+  if (!drawing) return;
+  
+  const newPosition = { x: e.offsetX, y: e.offsetY };
+  drawLine(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y);
+
+  // Save drawing data to Firebase
+  saveDrawingData(currentPosition.x, currentPosition.y, newPosition.x, newPosition.y);
+  
+  currentPosition = newPosition;
+});
+
+// Stop drawing
+canvas.addEventListener('mouseup', () => {
+  drawing = false;
+});
+
+// Clear canvas
+document.getElementById('clear').addEventListener('click', () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  set(ref(database, 'drawing'), null); // Clears the Firebase data
+});
+
+// Draw a line on the canvas
+function drawLine(x1, y1, x2, y2) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.closePath();
+}
+
+// Save drawing data to Firebase
+function saveDrawingData(x1, y1, x2, y2) {
+  const drawingRef = ref(database, 'drawing');
+  const drawingData = { x1, y1, x2, y2 };
+  set(drawingRef, drawingData);
+}
+
+// Retrieve and draw from Firebase in real-time
+const drawingRef = ref(database, 'drawing');
+onValue(drawingRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    drawLine(data.x1, data.y1, data.x2, data.y2);
+  }
 });

@@ -4,14 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-time Drawing Board</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <h1>Real-time Drawing Board</h1>
+    <div class="controls">
+        <label for="brushSize">Brush Size:</label>
+        <input type="range" id="brushSize" min="1" max="20" value="2">
+        
+        <label for="brushColor">Brush Color:</label>
+        <input type="color" id="brushColor" value="#000000">
+
+        <button id="clear">Clear Canvas</button>
+    </div>
+    
     <canvas id="drawingCanvas" width="800" height="600"></canvas>
-    <button id="clear">Clear Canvas</button>
 
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
